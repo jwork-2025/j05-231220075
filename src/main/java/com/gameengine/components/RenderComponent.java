@@ -1,19 +1,25 @@
 package com.gameengine.components;
 
 import com.gameengine.core.Component;
+import com.gameengine.core.GameObject;
 import com.gameengine.graphics.IRenderer;
 import com.gameengine.math.Vector2;
 
+/**
+ * 渲染组件，负责对象的渲染
+ */
 public class RenderComponent extends Component<RenderComponent> {
     private IRenderer renderer;
     private RenderType renderType;
     private Vector2 size;
+    private float rotation;
     private Color color;
     private boolean visible;
     
     public enum RenderType {
         RECTANGLE,
         CIRCLE,
+    TRIANGLE,
         LINE
     }
     
@@ -36,6 +42,7 @@ public class RenderComponent extends Component<RenderComponent> {
         this.renderType = RenderType.RECTANGLE;
         this.size = new Vector2(20, 20);
         this.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+    this.rotation = 0.0f;
         this.visible = true;
     }
     
@@ -43,11 +50,22 @@ public class RenderComponent extends Component<RenderComponent> {
         this.renderType = renderType;
         this.size = new Vector2(size);
         this.color = color;
+    this.rotation = 0.0f;
         this.visible = true;
     }
     
     @Override
     public void initialize() {
+        // 获取渲染器引用
+        if (owner != null) {
+            // 这里需要从游戏引擎获取渲染器
+            // 在实际实现中，可以通过依赖注入或其他方式获取
+        }
+    }
+    
+    @Override
+    public void update(float deltaTime) {
+        // 渲染组件通常不需要每帧更新
     }
     
     @Override
@@ -72,6 +90,10 @@ public class RenderComponent extends Component<RenderComponent> {
                 renderer.drawCircle(position.x + size.x/2, position.y + size.y/2, 
                                   size.x/2, 16, color.r, color.g, color.b, color.a);
                 break;
+            case TRIANGLE:
+                // draw triangle centered at position + size/2, use stored rotation
+                renderer.drawTriangle(position.x + size.x/2, position.y + size.y/2, Math.max(size.x, size.y), rotation, color.r, color.g, color.b, color.a);
+                break;
             case LINE:
                 renderer.drawLine(position.x, position.y, 
                                 position.x + size.x, position.y + size.y,
@@ -80,26 +102,50 @@ public class RenderComponent extends Component<RenderComponent> {
         }
     }
     
+    /**
+     * 设置渲染器
+     */
     public void setRenderer(IRenderer renderer) {
         this.renderer = renderer;
     }
     
+    /**
+     * 设置颜色
+     */
     public void setColor(Color color) {
         this.color = color;
     }
     
+    /**
+     * 设置颜色
+     */
     public void setColor(float r, float g, float b, float a) {
         this.color = new Color(r, g, b, a);
     }
     
+    /**
+     * 设置大小
+     */
     public void setSize(Vector2 size) {
         this.size = new Vector2(size);
     }
+
+    public void setRotation(float rotation) {
+        this.rotation = rotation;
+    }
+
+    public float getRotation() {
+        return rotation;
+    }
     
+    /**
+     * 设置可见性
+     */
     public void setVisible(boolean visible) {
         this.visible = visible;
     }
     
+    // Getters
     public RenderType getRenderType() {
         return renderType;
     }

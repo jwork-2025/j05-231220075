@@ -47,6 +47,7 @@ public class GPURenderer implements IRenderer {
     
     private void initialize() {
         try {
+            // Use headless mode for AWT to avoid AppKit/Toolkit initialization interfering with GLFW on macOS
             System.setProperty("java.awt.headless", "true");
             GLFWErrorCallback.createPrint(System.err).set();
             
@@ -223,8 +224,28 @@ public class GPURenderer implements IRenderer {
         GL11.glVertex2f(x2, y2);
         GL11.glEnd();
     }
-    
+
     @Override
+    public void drawTriangle(float x, float y, float size, float rotation, float r, float g, float b, float a) {
+        if (!initialized) return;
+        float half = size / 2.0f;
+        float[] bx = new float[] {0, -half, half};
+        float[] by = new float[] {-half, half, half};
+        double rad = Math.toRadians(rotation);
+        float cos = (float) Math.cos(rad);
+        float sin = (float) Math.sin(rad);
+
+        GL11.glColor4f(r, g, b, a);
+        GL11.glBegin(GL11.GL_TRIANGLES);
+        for (int i = 0; i < 3; i++) {
+            float rx = bx[i] * cos - by[i] * sin;
+            float ry = bx[i] * sin + by[i] * cos;
+            GL11.glVertex2f(x + rx, y + ry);
+        }
+        GL11.glEnd();
+    }
+    
+    // internal helper - not part of IRenderer (keeps float color/coords variant)
     public void drawText(float x, float y, String text, float r, float g, float b, float a) {
         if (!initialized || text == null || text.isEmpty()) return;
         
@@ -271,6 +292,16 @@ public class GPURenderer implements IRenderer {
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         GL11.glDisable(GL11.GL_TEXTURE_2D);
     }
+
+    @Override
+    public void drawText(String text, int x, int y, java.awt.Color color) {
+        if (color == null) color = java.awt.Color.WHITE;
+        float rf = color.getRed() / 255f;
+        float gf = color.getGreen() / 255f;
+        float bf = color.getBlue() / 255f;
+        float af = color.getAlpha() / 255f;
+        drawText((float)x, (float)y, text, rf, gf, bf, af);
+    }
     
     private void preloadTextures() {
         if (!initialized || texturesPreloaded) return;
@@ -311,9 +342,6 @@ public class GPURenderer implements IRenderer {
         
         if (!texturesPreloaded) {
             preloadTextures();
-            if (charTextures.containsKey(c)) {
-                return charTextures.get(c);
-            }
         }
         
         if (!initialized) {
@@ -514,7 +542,13 @@ public class GPURenderer implements IRenderer {
     @Override
     public boolean shouldClose() {
         if (!initialized) return false;
-        return GLFW.glfwWindowShouldClose(window);
+        if (window == MemoryUtil.NULL) return true;
+        try {
+            return GLFW.glfwWindowShouldClose(window);
+        } catch (Throwable t) {
+            // If GLFW has been terminated or the window is invalid, treat as should close to allow clean shutdown
+            return true;
+        }
     }
     
     @Override
@@ -562,4 +596,3 @@ public class GPURenderer implements IRenderer {
         return title;
     }
 }
-

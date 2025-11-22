@@ -69,5 +69,3 @@ public final class RecordingJson {
         return "";
     }
 }
-
-

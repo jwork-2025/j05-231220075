@@ -37,7 +37,7 @@ if [ -n "$OS_ID" ] && [ -n "$ARCH_ID" ] && [ -d "$LWJGL_DIR/natives/${OS_ID}-${A
 fi
 
 if [[ "$OS" == Darwin* ]]; then
-  exec java -XstartOnFirstThread $JAVA_FLAGS -cp "$CLASSPATH" com.gameengine.example.Game
+  exec java -XstartOnFirstThread $JAVA_FLAGS -cp "$CLASSPATH" com.gameengine.example.GameExample
 else
-  exec java $JAVA_FLAGS -cp "$CLASSPATH" com.gameengine.example.Game
+  exec java $JAVA_FLAGS -cp "$CLASSPATH" com.gameengine.example.GameExample
 fi

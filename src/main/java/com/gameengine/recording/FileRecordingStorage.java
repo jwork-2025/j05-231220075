@@ -55,6 +55,17 @@ public class FileRecordingStorage implements RecordingStorage {
         Arrays.sort(files, (a,b) -> Long.compare(b.lastModified(), a.lastModified()));
         return new ArrayList<>(Arrays.asList(files));
     }
+
+    @Override
+    public void cleanupOldRecordings(int maxFiles) {
+        File dir = new File("recordings");
+        if (!dir.exists() || !dir.isDirectory()) return;
+        File[] files = dir.listFiles((d, name) -> name.endsWith(".json") || name.endsWith(".jsonl"));
+        if (files == null || files.length <= maxFiles) return;
+        Arrays.sort(files, (a,b) -> Long.compare(a.lastModified(), b.lastModified())); // oldest first
+        int toDelete = files.length - maxFiles;
+        for (int i = 0; i < toDelete; i++) {
+            try { files[i].delete(); } catch (Exception ignored) {}
+        }
+    }
 }
-
-

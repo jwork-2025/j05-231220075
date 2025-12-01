@@ -1,3 +1,46 @@
+# J05 + Networking
+
+本版本在 J05 的基础上，集成了基于 NIO 的“网络联机”可运行示例
+
+## 启动与模式
+- 服务器：`./run.sh server`
+- 客户端：`./run.sh`
+
+
+## 协议与机制
+- KF（JSON 行）：`{"type":"kf","t":sec,"entities":[ ... ]}` 实体元素：
+  - 玩家：`{"id":<id>,"x":..,"y":..,"k":"p","hp":<hp>}`
+  - 子弹：`{"id":<id>,"x":..,"y":..,"k":"b","o":<ownerId>}`
+- 欢迎：`{"type":"welcome","id":<yourPlayerId>}`（客户端首次连接）
+- IN（文本行）：`INPUT:vx,vy,fire,ax,ay`
+  - `vx,vy`：移动方向（-1..1）
+  - `fire`：是否射击（0/1）
+  - `ax,ay`：瞄准归一化向量（由客户端鼠标位置计算）
+- 客户端插值：`com.gameengine.net.NetworkBuffer` 以 120ms 延迟对相邻关键帧线性插值，平滑抖动。
+- 线程模型：
+  - Server：`NioServer` 单线程 `Selector` 循环 + 20Hz 广播
+  - Client：`NioClient` 读包入缓冲；`NetworkGameScene` 在渲染前采样插值并上报输入
+
+## 代码入口
+- 服务器入口：`com.gameengine.example.ServerLauncher`
+- 客户端入口：`com.gameengine.example.ClientLauncher`
+- 客户端场景：`com.gameengine.example.NetworkGameScene`
+- 网络核心：`com.gameengine.net.*`
+ - 多客户端压力脚本：`run_multi.sh`
+
+
+使用示例：
+```bash
+# 启动服务器（默认监听 0.0.0.0:7777）
+./run.sh server
+
+# 单客户端（菜单方式进入 MULTIPLAYER）
+./run.sh
+
+```
+
+演示视频：BV1kgS6BrE5f。
+
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/iHSjCEgj)
 # J05
 

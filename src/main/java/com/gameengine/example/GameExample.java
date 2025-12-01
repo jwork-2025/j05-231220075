@@ -35,7 +35,7 @@ public class GameExample {
         while (restart) {
             // holder to obtain the GameLogic instance from the anonymous Scene so we can read survival time
             final com.gameengine.core.GameLogic[] gameLogicHolder = new com.gameengine.core.GameLogic[1];
-            GameEngine engine = new GameEngine(800, 600, "游戏引擎");
+            GameEngine engine = new GameEngine(1280, 800, "游戏引擎");
             // 创建主菜单场景
             Scene menu = new com.gameengine.scene.MenuScene(engine, "MainMenu");
             

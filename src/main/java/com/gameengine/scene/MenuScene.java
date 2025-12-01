@@ -19,6 +19,8 @@ import java.util.Random;
 public class MenuScene extends Scene {
     public enum MenuOption {
         START_GAME,
+        MULTIPLAYER,
+        SET_NAME,
         REPLAY,
         EXIT
     }
@@ -33,6 +35,8 @@ public class MenuScene extends Scene {
     private List<String> replayFiles;
     private boolean showReplayInfo;
     private int debugFrames;
+    private boolean typingName;
+    private String username;
     
     public MenuScene(GameEngine engine, String name) {
         super(name);
@@ -40,11 +44,14 @@ public class MenuScene extends Scene {
         this.renderer = engine.getRenderer();
         this.inputManager = InputManager.getInstance();
         this.selectedIndex = 0;
-        this.options = new MenuOption[]{MenuOption.START_GAME, MenuOption.REPLAY, MenuOption.EXIT};
+        this.options = new MenuOption[]{MenuOption.START_GAME, MenuOption.MULTIPLAYER, MenuOption.REPLAY, MenuOption.EXIT};
+        this.options = new MenuOption[]{MenuOption.START_GAME, MenuOption.MULTIPLAYER, MenuOption.SET_NAME, MenuOption.REPLAY, MenuOption.EXIT};
         this.selectionMade = false;
         this.selectedOption = null;
         this.replayFiles = new ArrayList<>();
         this.showReplayInfo = false;
+        this.typingName = false;
+        this.username = System.getProperty("network.username", System.getenv().getOrDefault("NETWORK_USERNAME", "Player"));
     }
     
     private void loadReplayFiles() {}
@@ -72,18 +79,39 @@ public class MenuScene extends Scene {
     }
     
     private void handleMenuSelection() {
-        if (inputManager.isKeyJustPressed(GLFW.GLFW_KEY_UP) || inputManager.isKeyJustPressed(38)) {
+        if (!typingName && (inputManager.isKeyJustPressed(GLFW.GLFW_KEY_UP) || inputManager.isKeyJustPressed(38))) {
             selectedIndex = (selectedIndex - 1 + options.length) % options.length;
-        } else if (inputManager.isKeyJustPressed(GLFW.GLFW_KEY_DOWN) || inputManager.isKeyJustPressed(40)) {
+        } else if (!typingName && (inputManager.isKeyJustPressed(GLFW.GLFW_KEY_DOWN) || inputManager.isKeyJustPressed(40))) {
             selectedIndex = (selectedIndex + 1) % options.length;
-        } else if (inputManager.isKeyJustPressed(GLFW.GLFW_KEY_ENTER) || inputManager.isKeyJustPressed(10) || inputManager.isKeyJustPressed(GLFW.GLFW_KEY_SPACE) || inputManager.isKeyJustPressed(32)) {
+        } else if (inputManager.isKeyJustPressed(GLFW.GLFW_KEY_ENTER) || inputManager.isKeyJustPressed(10) || (!typingName && (inputManager.isKeyJustPressed(GLFW.GLFW_KEY_SPACE) || inputManager.isKeyJustPressed(32)))) {
             selectionMade = true;
             selectedOption = options[selectedIndex];
             
+            if (typingName) {
+                // confirm name input
+                typingName = false;
+                selectionMade = false;
+                return;
+            }
             if (selectedOption == MenuOption.REPLAY) {
                 engine.stopRecording();
                 Scene replay = new ReplayScene(engine, null);
                 engine.setScene(replay);
+            } else if (selectedOption == MenuOption.MULTIPLAYER) {
+                // 进入网络联机客户端：默认连接本机 127.0.0.1:7777
+                try {
+                    System.setProperty("network.username", username);
+                    com.gameengine.net.NetworkBuffer buffer = new com.gameengine.net.NetworkBuffer();
+                    com.gameengine.net.NioClient client = new com.gameengine.net.NioClient("127.0.0.1", 7777, buffer);
+                    new Thread(client, "nio-client").start();
+                    com.gameengine.example.NetworkGameScene netScene = new com.gameengine.example.NetworkGameScene(engine, engine.getRenderer(), engine.getInputManager(), client, buffer);
+                    engine.setScene(netScene);
+                } catch (Exception e) {
+                    System.err.println("Failed to start network client: " + e.getMessage());
+                }
+            } else if (selectedOption == MenuOption.SET_NAME) {
+                typingName = true;
+                selectionMade = false;
             } else if (selectedOption == MenuOption.EXIT) {
                 engine.stop();
                 engine.cleanup();
@@ -98,29 +126,60 @@ public class MenuScene extends Scene {
             engine.cleanup();
             System.exit(0);
         }
-        if (inputManager.isMouseButtonJustPressed(0)) {
+        if (!typingName && inputManager.isMouseButtonJustPressed(0)) {
             float centerY = renderer.getHeight() / 2.0f;
-            float buttonY1 = centerY - 80;
-            float buttonY2 = centerY + 0;
-            float buttonY3 = centerY + 80;
+            float spacing = 70f;
+            float startY = centerY - (options.length - 1) * spacing / 2f;
             
-            if (mousePos.y >= buttonY1 - 30 && mousePos.y <= buttonY1 + 30) {
-                selectedIndex = 0;
-                selectionMade = true;
-                selectedOption = MenuOption.START_GAME;
-            } else if (mousePos.y >= buttonY2 - 30 && mousePos.y <= buttonY2 + 30) {
-                selectedIndex = 1;
-                selectedOption = MenuOption.REPLAY;
-                engine.stopRecording();
-                Scene replay = new ReplayScene(engine, null);
-                engine.setScene(replay);
-            } else if (mousePos.y >= buttonY3 - 30 && mousePos.y <= buttonY3 + 30) {
-                selectedIndex = 2;
-                selectionMade = true;
-                selectedOption = MenuOption.EXIT;
-                engine.stop();
-                engine.cleanup();
-                System.exit(0);
+            for (int i = 0; i < options.length; i++) {
+                float y = startY + i * spacing;
+                if (mousePos.y >= y - 30 && mousePos.y <= y + 30) {
+                    selectedIndex = i;
+                    selectionMade = true;
+                    selectedOption = options[i];
+                    if (selectedOption == MenuOption.REPLAY) {
+                        engine.stopRecording();
+                        Scene replay = new ReplayScene(engine, null);
+                        engine.setScene(replay);
+                    } else if (selectedOption == MenuOption.MULTIPLAYER) {
+                        try {
+                            System.setProperty("network.username", username);
+                            com.gameengine.net.NetworkBuffer buffer = new com.gameengine.net.NetworkBuffer();
+                            com.gameengine.net.NioClient client = new com.gameengine.net.NioClient("127.0.0.1", 7777, buffer);
+                            new Thread(client, "nio-client").start();
+                            com.gameengine.example.NetworkGameScene netScene = new com.gameengine.example.NetworkGameScene(engine, engine.getRenderer(), engine.getInputManager(), client, buffer);
+                            engine.setScene(netScene);
+                        } catch (Exception e) {
+                            System.err.println("Failed to start network client: " + e.getMessage());
+                        }
+                    } else if (selectedOption == MenuOption.SET_NAME) {
+                        typingName = true;
+                        selectionMade = false;
+                    } else if (selectedOption == MenuOption.EXIT) {
+                        engine.stop();
+                        engine.cleanup();
+                        System.exit(0);
+                    }
+                    break;
+                }
+            }
+        }
+
+        // typing name mode: handle ASCII text input
+        if (typingName) {
+            // letters/numbers and space via GLFW keycodes (basic handling)
+            for (int code = 32; code <= 126; code++) {
+                if (inputManager.isKeyJustPressed(code)) {
+                    username += (char) code;
+                }
+            }
+            // backspace
+            if (inputManager.isKeyJustPressed(GLFW.GLFW_KEY_BACKSPACE)) {
+                if (username.length() > 0) username = username.substring(0, username.length() - 1);
+            }
+            // escape to cancel
+            if (inputManager.isKeyJustPressed(GLFW.GLFW_KEY_ESCAPE) || inputManager.isKeyJustPressed(27)) {
+                typingName = false;
             }
         }
     }
@@ -284,27 +343,29 @@ public class MenuScene extends Scene {
     renderer.drawRect(centerX - titleWidth / 2.0f - 20, titleY - 40, titleWidth + 40, 80, 0.4f, 0.4f, 0.5f, 1.0f);
     renderer.drawText(title, (int)titleX, (int)titleY, new java.awt.Color(255,255,255));
         
+        float spacing = 80f;
+        float startY = centerY - (options.length - 1) * spacing / 2f;
         for (int i = 0; i < options.length; i++) {
-            String text = "";
-            if (options[i] == MenuOption.START_GAME) {
-                text = "START GAME";
-            } else if (options[i] == MenuOption.REPLAY) {
-                text = "REPLAY";
-            } else if (options[i] == MenuOption.EXIT) {
-                text = "EXIT";
+            String text;
+            switch (options[i]) {
+                case START_GAME: text = "START GAME"; break;
+                case MULTIPLAYER: text = "MULTIPLAYER"; break;
+                case SET_NAME: text = "SET NAME"; break;
+                case REPLAY: text = "REPLAY"; break;
+                case EXIT: default: text = "EXIT"; break;
             }
-            
+
             float textWidth = text.length() * 20.0f;
             float textX = centerX - textWidth / 2.0f;
-            float textY = centerY - 80.0f + i * 80.0f;
-            
+            float textY = startY + i * spacing;
+
             if (i == selectedIndex) {
                 renderer.drawRect(textX - 20, textY - 20, textWidth + 40, 50, 0.6f, 0.5f, 0.2f, 0.9f);
             } else {
                 renderer.drawRect(textX - 20, textY - 20, textWidth + 40, 50, 0.2f, 0.2f, 0.3f, 0.5f);
             }
-            
-                renderer.drawText(text, (int)textX, (int)textY, new java.awt.Color(255,255,255));
+
+            renderer.drawText(text, (int)textX, (int)textY, new java.awt.Color(255,255,255));
         }
         
         String hint1 = "USE ARROWS OR MOUSE TO SELECT, ENTER TO CONFIRM";
@@ -316,6 +377,17 @@ public class MenuScene extends Scene {
         float hint2Width = hint2.length() * 20.0f;
         float hint2X = centerX - hint2Width / 2.0f;
     renderer.drawText(hint2, (int)hint2X, height - 70, new java.awt.Color(160,160,160));
+
+        // Show current username and typing prompt
+        String nameLabel = "USERNAME: " + username;
+        float nameWidth = nameLabel.length() * 20.0f;
+        renderer.drawText(nameLabel, (int)(centerX - nameWidth / 2.0f), (int)(titleY + 60), new java.awt.Color(220,220,220));
+
+        if (typingName) {
+            String info = "TYPING NAME: ENTER CONFIRM, BACKSPACE DELETE, ESC CANCEL";
+            float w = info.length() * 20.0f;
+            renderer.drawText(info, (int)(centerX - w / 2.0f), height - 140, new java.awt.Color(230,200,50));
+        }
 
         if (showReplayInfo) {
             String info = "REPLAY COMING SOON";

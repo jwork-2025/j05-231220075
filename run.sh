@@ -36,8 +36,14 @@ if [ -n "$OS_ID" ] && [ -n "$ARCH_ID" ] && [ -d "$LWJGL_DIR/natives/${OS_ID}-${A
   JAVA_FLAGS="-Dorg.lwjgl.librarypath=$LWJGL_DIR/natives/${OS_ID}-${ARCH_ID}"
 fi
 
-if [[ "$OS" == Darwin* ]]; then
-  exec java -XstartOnFirstThread $JAVA_FLAGS -cp "$CLASSPATH" com.gameengine.example.GameExample
+MODE=${1:-single}
+MAIN_CLASS="com.gameengine.example.GameExample"
+if [ "$MODE" = "server" ]; then
+  MAIN_CLASS="com.gameengine.example.ServerLauncher"
+fi
+
+if [[ "$OS" == Darwin* ]] && [ "$MAIN_CLASS" = "com.gameengine.example.GameExample" ]; then
+  exec java -XstartOnFirstThread $JAVA_FLAGS -cp "$CLASSPATH" "$MAIN_CLASS"
 else
-  exec java $JAVA_FLAGS -cp "$CLASSPATH" com.gameengine.example.GameExample
+  exec java $JAVA_FLAGS -cp "$CLASSPATH" "$MAIN_CLASS"
 fi
